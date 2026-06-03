@@ -15,6 +15,7 @@ scripts/
 MIGRATION.md
 data/school_counts_reconciliation.json
 data/school_counts_reconciliation.md
+.timesheet-log.md
 
 # Python
 __pycache__/
