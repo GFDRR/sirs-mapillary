@@ -1012,9 +1012,12 @@ async function addSchoolLayers() {
         let top = [];
         try { top = typeof props.mly_top === "string" ? JSON.parse(props.mly_top) : (props.mly_top || []); } catch (_) {}
         props.mly_top = top;
+        const [lon, lat] = f.geometry.coordinates;
+        // Cache the selection: the viewer minimap places the school marker
+        // from activeSchool.lon/lat, and in-viewer navigation reads .top.
+        activeSchool = { props, top, lon, lat };
         openInfoPanel(props, top);
         showConesFor(top);
-        const [lon, lat] = f.geometry.coordinates;
         fitToSchoolAndCones(lon, lat, top);
       });
       map.on("mouseenter", "coverage", () => { map.getCanvas().style.cursor = "pointer"; });
