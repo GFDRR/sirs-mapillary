@@ -96,8 +96,9 @@ export default {
 
     // Workaround: Mapillary's API currently 500s whenever `sfm_cluster` is in
     // the fields list (confirmed direct, every retry). mapillary-js requests it
-    // for the viewer; strip it so the rest of the image data loads (the viewer
-    // renders the photo without the point-cloud/3D reconstruction).
+    // for spatial/SfM data; strip it so the rest of the image data loads. The
+    // default viewer used here shows the image + sequence navigation and does
+    // not render a point cloud, so dropping this field has no visible effect.
     const fields = upstream.searchParams.get("fields");
     if (fields && fields.includes("sfm_cluster")) {
       upstream.searchParams.set(
