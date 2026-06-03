@@ -11,21 +11,37 @@
 // The access_token query param is appended to every upstream request. Any
 // query params the client sent (e.g. ?fields=thumb_256_url) are preserved.
 //
-// CORS: permissive (any origin) so it can be called from GitHub Pages or any
-// preview host. Tighten ALLOW_ORIGIN below if you want to lock it to one site.
+// Origin lock: only the allowlisted origins below may call the proxy from a
+// browser. A cross-origin request carrying a non-allowed Origin is rejected
+// 403 (this stops other websites from spending the Mapillary quota). Requests
+// with no Origin header (e.g. same-origin or non-browser) are allowed through;
+// CORS only governs browser cross-origin use.
 //
 // Set the secret once with:   wrangler secret put MAPILLARY_TOKEN
 
-const ALLOW_ORIGIN = "*";
+const ALLOWED_ORIGINS = [
+  "https://gfdrr.github.io",
+  "http://localhost:8765",
+  "http://127.0.0.1:8765",
+];
 
 const UPSTREAMS = {
   tiles: "https://tiles.mapillary.com",
   graph: "https://graph.mapillary.com",
 };
 
-function corsHeaders() {
+// Return the matched allowed origin, or null if the request carries a
+// non-allowed Origin, or undefined if it carries no Origin at all.
+function matchOrigin(request) {
+  const o = request.headers.get("Origin");
+  if (!o) return undefined;
+  return ALLOWED_ORIGINS.includes(o) ? o : null;
+}
+
+function corsHeaders(allowedOrigin) {
   return {
-    "Access-Control-Allow-Origin": ALLOW_ORIGIN,
+    "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
+    "Vary": "Origin",
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
     "Access-Control-Allow-Headers": "*",
     "Access-Control-Max-Age": "86400",
@@ -34,19 +50,27 @@ function corsHeaders() {
 
 export default {
   async fetch(request, env) {
+    const matched = matchOrigin(request); // string | null | undefined
+    const cors = corsHeaders(matched || undefined);
+
+    // Block cross-origin browser requests from non-allowed sites.
+    if (matched === null) {
+      return new Response("forbidden: origin not allowed", { status: 403, headers: cors });
+    }
+
     // Preflight
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
+      return new Response(null, { status: 204, headers: cors });
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      return new Response("method not allowed", { status: 405, headers: corsHeaders() });
+      return new Response("method not allowed", { status: 405, headers: cors });
     }
 
     const token = env.MAPILLARY_TOKEN;
     if (!token) {
       return new Response("proxy misconfigured: MAPILLARY_TOKEN secret not set", {
         status: 500,
-        headers: corsHeaders(),
+        headers: cors,
       });
     }
 
@@ -58,7 +82,7 @@ export default {
     if (!base) {
       return new Response("not found - use /tiles/... or /graph/...", {
         status: 404,
-        headers: corsHeaders(),
+        headers: cors,
       });
     }
 
@@ -77,7 +101,7 @@ export default {
 
     // Pass through status + body, add CORS, drop any hop-by-hop headers.
     const headers = new Headers(upstreamResp.headers);
-    for (const [k, v] of Object.entries(corsHeaders())) headers.set(k, v);
+    for (const [k, v] of Object.entries(cors)) headers.set(k, v);
     headers.delete("set-cookie");
 
     return new Response(upstreamResp.body, {
