@@ -1,0 +1,9 @@
+# Cloudflare Worker config for the Mapillary token proxy.
+#
+# The Mapillary token is NOT stored here. It is a Worker secret, set once with:
+#   wrangler secret put MAPILLARY_TOKEN
+# (paste the MLY|... token when prompted). Secrets never live in this file.
+
+name = "sirs-mapillary-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"

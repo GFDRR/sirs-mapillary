@@ -1,0 +1,107 @@
+[
+  {
+    "iso": "NER",
+    "sample_size": 1000,
+    "unique_locations_in_sample": 1000,
+    "covered_raw": 78,
+    "covered_unique": 78,
+    "covered_close_raw": 24,
+    "covered_close_unique": 24,
+    "pct_covered_raw": 7.8,
+    "pct_covered_unique": 7.8,
+    "pct_covered_close_raw": 2.4,
+    "pct_covered_close_unique": 2.4,
+    "median_images_when_covered": 36,
+    "median_year_when_covered": 2024,
+    "latest_year_observed": 2026,
+    "full_dataset": {
+      "total_schools": 19490,
+      "unique_coords": 19437,
+      "dup_rate_pct": 0.3
+    }
+  },
+  {
+    "iso": "GIN",
+    "sample_size": 1000,
+    "unique_locations_in_sample": 332,
+    "covered_raw": 549,
+    "covered_unique": 112,
+    "covered_close_raw": 359,
+    "covered_close_unique": 51,
+    "pct_covered_raw": 54.9,
+    "pct_covered_unique": 33.7,
+    "pct_covered_close_raw": 35.9,
+    "pct_covered_close_unique": 15.4,
+    "median_images_when_covered": 42,
+    "median_year_when_covered": 2021,
+    "latest_year_observed": 2023,
+    "full_dataset": {
+      "total_schools": 15284,
+      "unique_coords": 1124,
+      "dup_rate_pct": 92.6
+    }
+  },
+  {
+    "iso": "MLI",
+    "sample_size": 1000,
+    "unique_locations_in_sample": 985,
+    "covered_raw": 147,
+    "covered_unique": 139,
+    "covered_close_raw": 57,
+    "covered_close_unique": 52,
+    "pct_covered_raw": 14.7,
+    "pct_covered_unique": 14.1,
+    "pct_covered_close_raw": 5.7,
+    "pct_covered_close_unique": 5.3,
+    "median_images_when_covered": 39,
+    "median_year_when_covered": 2020,
+    "latest_year_observed": 2025,
+    "full_dataset": {
+      "total_schools": 11810,
+      "unique_coords": 10632,
+      "dup_rate_pct": 10.0
+    }
+  },
+  {
+    "iso": "BEN",
+    "sample_size": 1000,
+    "unique_locations_in_sample": 984,
+    "covered_raw": 77,
+    "covered_unique": 75,
+    "covered_close_raw": 30,
+    "covered_close_unique": 30,
+    "pct_covered_raw": 7.7,
+    "pct_covered_unique": 7.6,
+    "pct_covered_close_raw": 3.0,
+    "pct_covered_close_unique": 3.0,
+    "median_images_when_covered": 35,
+    "median_year_when_covered": 2017,
+    "latest_year_observed": 2025,
+    "full_dataset": {
+      "total_schools": 7697,
+      "unique_coords": 6902,
+      "dup_rate_pct": 10.3
+    }
+  },
+  {
+    "iso": "GHA",
+    "sample_size": 1000,
+    "unique_locations_in_sample": 1000,
+    "covered_raw": 430,
+    "covered_unique": 430,
+    "covered_close_raw": 199,
+    "covered_close_unique": 199,
+    "pct_covered_raw": 43.0,
+    "pct_covered_unique": 43.0,
+    "pct_covered_close_raw": 19.9,
+    "pct_covered_close_unique": 19.9,
+    "median_images_when_covered": 39,
+    "median_year_when_covered": 2024,
+    "latest_year_observed": 2026,
+    "full_dataset": {
+      "total_schools": 4506,
+      "unique_coords": 4504,
+      "dup_rate_pct": 0.0
+    }
+  }
+]

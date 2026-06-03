@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.local
+config.js
+
+# Open data only is published. These non-public school layers are never committed.
+data/schools_NER.geojson
+data/schools_GIN.geojson
+data/schools_MLI.geojson
+data/schools_BEN.geojson
+data/sampled_coverage.geojson
+
+# Internal data-prep scripts and notes - kept local, not part of the public app
+scripts/
+MIGRATION.md
+data/school_counts_reconciliation.json
+data/school_counts_reconciliation.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

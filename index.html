@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mapillary School Coverage - West Africa</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2028;
+    --panel-2: #242b36;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --accent: #d73f3f;
+    --green: #3fb950;
+    --amber: #d29922;
+    --red: #f85149;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  #app { display: grid; grid-template-columns: 400px 1fr; height: 100vh; }
+  #sidebar { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 18px 20px; }
+  #map { position: relative; }
+  h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: 0.3px; }
+  .sub { color: var(--muted); font-size: 12px; margin: 0 0 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.country-row { cursor: pointer; transition: background 0.1s; }
+  tr.country-row:hover { background: var(--panel-2); }
+  tr.country-row.active { background: #2d3648; }
+  .pct-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .pct-bar { position: relative; width: 54px; height: 4px; background: var(--border); border-radius: 2px; }
+  .pct-bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); border-radius: 2px; }
+  .pct-sub { font-size: 10px; color: var(--muted); line-height: 1; font-weight: 500; }
+  .legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); }
+  .legend-line { width: 18px; height: 3px; }
+  .toggle { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: var(--fg); cursor: pointer; }
+  .toggle input { accent-color: var(--accent); }
+  .banner { background: #2d1f1f; border: 1px solid #5a3737; color: #ffb4b4; padding: 8px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 12px; display: none; }
+  .footer-note { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* Popup styling - now wider to fit photos */
+  .maplibregl-popup { max-width: 360px !important; }
+  .maplibregl-popup-content { background: var(--panel); color: var(--fg); border-radius: 8px; padding: 12px 14px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid var(--border); width: 340px; }
+  .maplibregl-popup-tip { border-top-color: var(--panel) !important; border-bottom-color: var(--panel) !important; }
+  .maplibregl-popup-close-button { color: var(--muted); font-size: 18px; padding: 4px 8px; }
+  .popup-title { font-weight: 600; margin: 0 0 4px; font-size: 14px; line-height: 1.25; }
+  .popup-row { display: flex; justify-content: space-between; gap: 12px; margin: 2px 0; }
+  .popup-row .label { color: var(--muted); }
+  .popup-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; margin: 6px 0 10px; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .badge.covered { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge.nope { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge.pano { background: rgba(53,170,220,0.15); color: #35aadc; padding: 0 4px; font-size: 9px; letter-spacing: 0; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+  /* Photo gallery in popup */
+  .photo-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+  .photo-strip .thumb { position: relative; aspect-ratio: 4 / 3; background: var(--panel-2); border-radius: 4px; overflow: hidden; cursor: pointer; border: 1px solid var(--border); transition: transform 0.1s, border-color 0.1s; }
+  .photo-strip .thumb:hover { border-color: var(--accent); transform: scale(1.02); }
+  .photo-strip .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-strip .thumb .thumb-meta { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 14px 4px 3px; font-size: 9px; color: #fff; line-height: 1.1; display: flex; justify-content: space-between; }
+  .photo-strip .thumb .pano-marker { position: absolute; top: 3px; right: 3px; }
+  .photo-strip .thumb .face-marker { position: absolute; top: 3px; left: 3px; background: rgba(63,185,80,0.9); color: #0f1419; font-size: 8px; padding: 0 3px; border-radius: 2px; font-weight: 700; letter-spacing: 0.3px; }
+  .photo-strip .thumb-empty { background: var(--panel-2); border: 1px dashed var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px; aspect-ratio: 4 / 3; border-radius: 4px; padding: 6px; text-align: center; }
+  .photo-strip .thumb-loading { background: var(--panel-2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 9px; aspect-ratio: 4 / 3; }
+  .photo-hint { font-size: 10px; color: var(--muted); margin-top: 6px; text-align: center; }
+  .full-empty { grid-column: 1 / -1; }
+
+  /* Viewer modal */
+  #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 24px; }
+  #modal-overlay.open { display: flex; }
+  #modal { background: var(--panel); border-radius: 10px; width: min(1200px, 95vw); height: min(800px, 90vh); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.6); border: 1px solid var(--border); }
+  #viewer-area { position: relative; width: 100%; height: 100%; }
+  #modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  #modal-title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; }
+  #modal-meta { color: var(--muted); font-size: 12px; margin-left: 12px; }
+  #modal-close { background: none; border: 1px solid var(--border); color: var(--fg); border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 14px; }
+  #modal-close:hover { background: var(--panel-2); border-color: var(--accent); }
+  #viewer-container { width: 100%; height: 100%; background: #000; position: relative; }
+  #viewer-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
+  #viewer-strip { display: flex; gap: 4px; padding: 8px 12px; overflow-x: auto; background: var(--panel-2); border-top: 1px solid var(--border); }
+  #viewer-strip .vthumb { flex: 0 0 auto; width: 80px; height: 60px; background: var(--bg); border: 2px solid transparent; border-radius: 3px; overflow: hidden; cursor: pointer; position: relative; }
+  #viewer-strip .vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #viewer-strip .vthumb.active { border-color: var(--accent); }
+  #viewer-strip .vthumb-meta { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; font-size: 9px; padding: 1px 3px; text-align: center; }
+  .pano-tag { position: absolute; top: 2px; right: 2px; background: rgba(53,170,220,0.85); color: #fff; font-size: 8px; padding: 0 3px; border-radius: 2px; font-weight: 600; }
+
+  #loading { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(26,32,40,0.95); border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; font-size: 12px; z-index: 10; }
+
+  /* Docked info panel (replaces floating popup) */
+  #info-panel { position: absolute; top: 12px; right: 12px; width: 360px; max-height: calc(100vh - 24px); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 20; display: none; flex-direction: column; overflow: hidden; }
+  #info-panel.open { display: flex; }
+  #info-panel header { display: flex; align-items: flex-start; justify-content: space-between; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); gap: 8px; }
+  #info-panel header .ip-title-wrap { flex: 1; min-width: 0; }
+  #info-panel .ip-title { font-weight: 600; font-size: 14px; line-height: 1.25; margin: 0; word-break: break-word; }
+  #info-panel .ip-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  #info-panel .ip-close { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 16px; line-height: 1; }
+  #info-panel .ip-close:hover { color: var(--fg); border-color: var(--accent); }
+  #info-panel .ip-body { padding: 10px 12px 12px; overflow-y: auto; }
+
+  /* Basemap selector */
+  .basemap-row { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .basemap-btn { flex: 1 1 auto; min-width: 0; background: var(--panel-2); color: var(--fg); border: 1px solid var(--border); padding: 5px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; text-align: center; transition: border-color 0.1s, background 0.1s; }
+  .basemap-btn:hover { border-color: var(--accent); }
+  .basemap-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Viewer minimap (picture-in-picture) */
+  #viewer-minimap { position: absolute; bottom: 12px; right: 12px; width: 220px; height: 165px; border: 2px solid rgba(255,255,255,0.85); border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.6); z-index: 5; background: var(--panel-2); }
+  #viewer-minimap .maplibregl-control-container { display: none; }
+  #viewer-minimap-label { position: absolute; top: 4px; left: 6px; background: rgba(0,0,0,0.55); color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 3px; pointer-events: none; letter-spacing: 0.3px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>Mapillary coverage of schools</h1>
+    <p class="sub">5 West African countries - Guinea, Mali, Niger, Benin, Ghana</p>
+
+    <div id="token-banner" class="banner">
+      Missing Mapillary token. Run <code>scripts/04_write_config.sh</code> to generate <code>config.js</code>.
+    </div>
+
+    <h2>Coverage by country (sampled)</h2>
+    <table id="stats">
+      <thead>
+        <tr>
+          <th>Country</th>
+          <th class="num" title="Per-country random sample">N</th>
+          <th class="num" title="At least one Mapillary image within 250m">&le;250m</th>
+          <th class="num" title="At least one image within 100m - the working distance for taxonomy eyeballing">&le;100m</th>
+          <th class="num" title="Median capture year across covered schools">Yr</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p class="sub" style="margin-top:8px;font-size:11px;">Raw % (top) shown over unique % (bottom, dedup'd by coordinate). Guinea raw inflates because many source rows share a single Conakry centroid. The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound.</p>
+
+    <h2>Basemap</h2>
+    <div class="basemap-row" id="basemap-row">
+      <button class="basemap-btn active" data-basemap="osm">OSM</button>
+      <button class="basemap-btn" data-basemap="esri">Esri sat</button>
+      <button class="basemap-btn" data-basemap="bing">Bing sat</button>
+    </div>
+
+    <h2>Layers</h2>
+    <label class="toggle"><input type="checkbox" id="toggle-mly" checked /> Mapillary sequences (street-level)</label>
+    <label class="toggle"><input type="checkbox" id="toggle-osm" checked /> OSM amenity=school</label>
+
+    <h2>Legend</h2>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-line" style="background: #35aadc"></span> Mapillary sequence (any year)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #f2a93b"></span> School (OpenStreetMap amenity=school)</div>
+    </div>
+
+    <h2>Browse photos</h2>
+    <p class="sub" style="font-size:11px;line-height:1.5;">Pan or zoom to a town to see Mapillary street-level coverage (blue lines). The coverage table above summarizes how often schools fall within range of a Mapillary image, sampled per country.</p>
+
+    <div class="footer-note">
+      School points come from OpenStreetMap (amenity=school). Coverage = one or more Mapillary images within 250m of a school point. The table shows results from a per-country random sample of 1,000 schools (seed=42). The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound.
+      <br><br>
+      <strong>Data note</strong>: Guinea's raw % inflates because some source rows share a single Conakry centroid; prefer the Unique % column for Guinea.
+    </div>
+  </aside>
+  <div id="map">
+    <div id="loading">Loading...</div>
+    <aside id="info-panel" role="dialog" aria-label="School details">
+      <header>
+        <div class="ip-title-wrap">
+          <p class="ip-title" id="ip-title">School</p>
+          <p class="ip-sub" id="ip-sub"></p>
+        </div>
+        <button class="ip-close" id="ip-close" aria-label="Close">&times;</button>
+      </header>
+      <div class="ip-body" id="ip-body"></div>
+    </aside>
+  </div>
+</div>
+
+<div id="modal-overlay" role="dialog" aria-modal="true">
+  <div id="modal">
+    <div id="modal-header">
+      <h3 id="modal-title">School photo</h3>
+      <span id="modal-meta"></span>
+      <button id="modal-close" aria-label="Close">Close (Esc)</button>
+    </div>
+    <div id="viewer-area">
+      <div id="viewer-container"><div id="viewer-loading">Loading viewer...</div></div>
+      <div id="viewer-minimap"><span id="viewer-minimap-label">School map</span></div>
+    </div>
+    <div id="viewer-strip"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
+<script src="./config.js" onerror="document.getElementById('token-banner').style.display='block'"></script>
+<script>
+const COUNTRY_NAMES = { NER: "Niger", GIN: "Guinea", MLI: "Mali", BEN: "Benin", GHA: "Ghana" };
+const COUNTRY_TOTALS = { NER: 19490, GIN: 15284, MLI: 11810, BEN: 7697, GHA: 4506 };
+const COUNTRY_COLORS = { NER: "#f2a93b", GIN: "#4dabf7", MLI: "#c084fc", BEN: "#34d399", GHA: "#f472b6" };
+
+// ---- Mapillary access: proxy (public build) vs direct token (local dev) ----
+// PUBLIC BUILD: set window.MLY_PROXY_BASE (a Cloudflare Worker URL). The Worker
+//   injects the access token server-side, so NO token ships to the browser.
+// LOCAL DEV: leave MLY_PROXY_BASE unset; the app uses window.MAPILLARY_TOKEN
+//   from the gitignored config.js exactly as before.
+const TOKEN = window.MAPILLARY_TOKEN;
+const PROXY_BASE = (window.MLY_PROXY_BASE || "").replace(/\/+$/, ""); // trim trailing slash
+const USE_PROXY = !!PROXY_BASE;
+
+// The viewer/thumbnail/tile features need a working access path. Show the
+// banner only when NEITHER a proxy nor a local token is configured.
+if (!USE_PROXY && !TOKEN) document.getElementById("token-banner").style.display = "block";
+
+// Build a Mapillary vector-tile URL. Through the proxy when configured (token
+// added server-side); otherwise direct with the local token query param.
+function mlyTileUrl() {
+  const path = "maps/vtp/mly1_public/2/{z}/{x}/{y}";
+  if (USE_PROXY) return `${PROXY_BASE}/tiles/${path}`;
+  return `https://tiles.mapillary.com/${path}?access_token=${TOKEN}`;
+}
+
+// Build a Mapillary graph API URL (e.g. for thumbnails). `path` is the part
+// after graph.mapillary.com/ (no leading slash). `params` are query params
+// WITHOUT the access token (the proxy adds it server-side).
+function mlyGraphUrl(path, params) {
+  const qs = new URLSearchParams(params || {});
+  if (USE_PROXY) {
+    const q = qs.toString();
+    return `${PROXY_BASE}/graph/${path}${q ? "?" + q : ""}`;
+  }
+  qs.set("access_token", TOKEN);
+  return `https://graph.mapillary.com/${path}?${qs.toString()}`;
+}
+
+// ---- Bing tiles via custom protocol (quadkey conversion) ----
+function tileXYToQuadKey(x, y, z) {
+  let q = "";
+  for (let i = z; i > 0; i--) {
+    let digit = 0;
+    const mask = 1 << (i - 1);
+    if ((x & mask) !== 0) digit++;
+    if ((y & mask) !== 0) digit += 2;
+    q += String(digit);
+  }
+  return q;
+}
+maplibregl.addProtocol("bing", async (params, abortController) => {
+  const m = params.url.match(/^bing:\/\/(\d+)\/(\d+)\/(\d+)/);
+  if (!m) throw new Error("bad bing url: " + params.url);
+  const z = +m[1], x = +m[2], y = +m[3];
+  const qk = tileXYToQuadKey(x, y, z);
+  const sub = (x + y) % 4;
+  const realUrl = `https://ecn.t${sub}.tiles.virtualearth.net/tiles/a${qk}.jpeg?g=14649`;
+  const res = await fetch(realUrl, { signal: abortController ? abortController.signal : undefined });
+  if (!res.ok) throw new Error("bing tile " + res.status);
+  const data = await res.arrayBuffer();
+  return { data };
+});
+
+const BASEMAPS = {
+  osm: {
+    type: "raster",
+    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+    tileSize: 256,
+    attribution: "&copy; OpenStreetMap contributors",
+  },
+  esri: {
+    type: "raster",
+    tiles: [
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    ],
+    tileSize: 256,
+    attribution: "Tiles &copy; Esri - Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+  },
+  bing: {
+    type: "raster",
+    tiles: ["bing://{z}/{x}/{y}"],
+    tileSize: 256,
+    attribution: "Imagery &copy; Microsoft / Bing Maps",
+  },
+};
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    sources: { basemap: BASEMAPS.osm },
+    layers: [
+      { id: "basemap", type: "raster", source: "basemap", paint: { "raster-saturation": -0.5, "raster-brightness-min": 0.1, "raster-brightness-max": 0.85 } },
+    ],
+  },
+  center: [-1.5, 11.5],
+  zoom: 4.2,
+  minZoom: 2,
+  maxZoom: 18,
+});
+
+function setBasemap(name) {
+  const spec = BASEMAPS[name];
+  if (!spec) return;
+  const src = map.getSource("basemap");
+  if (!src) return;
+  // For raster sources, swapping the tiles array requires removing/re-adding;
+  // we do it by setting the internal tiles and triggering a reload.
+  src.tiles = spec.tiles.slice();
+  src.attribution = spec.attribution;
+  // Adjust the basemap paint based on whether it is satellite or OSM
+  const isSat = name !== "osm";
+  map.setPaintProperty("basemap", "raster-saturation", isSat ? 0 : -0.5);
+  map.setPaintProperty("basemap", "raster-brightness-min", isSat ? 0 : 0.1);
+  map.setPaintProperty("basemap", "raster-brightness-max", isSat ? 1 : 0.85);
+  // Force reload by clearing the tile cache for this source
+  map.style.sourceCaches["basemap"].clearTiles();
+  map.style.sourceCaches["basemap"].update(map.transform);
+  map.triggerRepaint();
+  document.querySelectorAll("#basemap-row .basemap-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.basemap === name);
+  });
+}
+
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+function addMapillaryLayer() {
+  if (!USE_PROXY && !TOKEN) return;
+  map.addSource("mapillary", {
+    type: "vector",
+    tiles: [mlyTileUrl()],
+    minzoom: 0,
+    maxzoom: 14,
+    attribution: "&copy; Mapillary",
+  });
+  map.addLayer({
+    id: "mly-overview",
+    type: "line",
+    source: "mapillary",
+    "source-layer": "overview",
+    minzoom: 0,
+    maxzoom: 8,
+    paint: { "line-color": "#35aadc", "line-width": 1, "line-opacity": 0.5 },
+  });
+  map.addLayer({
+    id: "mly-sequence",
+    type: "line",
+    source: "mapillary",
+    "source-layer": "sequence",
+    minzoom: 6,
+    paint: {
+      "line-color": "#35aadc",
+      "line-opacity": 0.75,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.5, 10, 1.2, 14, 2],
+    },
+  });
+}
+
+// In-memory cache of resolved thumbnail URLs (signed, ~24h validity)
+const thumbCache = new Map();
+const inflight = new Map(); // id|size -> Promise
+
+// ---- view-cone overlay geometry ----
+// Wedges are drawn in a local equirectangular projection around the
+// school point. Lengths are short (max ~80m) so curvature is negligible.
+const VIEW_CONE_LEN_M = 50;       // wedge length in meters
+const VIEW_CONE_HALF_FOV = 30;    // half horizontal FOV in degrees for perspective images
+const PANO_RADIUS_M = 12;         // panos: circle radius instead of wedge
+
+function metersToDegLocal(lat) {
+  const dLat = 1 / 111320;
+  const dLon = 1 / (111320 * Math.max(0.01, Math.cos(lat * Math.PI / 180)));
+  return { dLat, dLon };
+}
+
+function projectWedge(lon, lat, headingDeg, lengthM, halfFovDeg) {
+  // Heading: 0=N, clockwise. Output: ring of [lon,lat] points forming a triangular wedge.
+  const { dLat, dLon } = metersToDegLocal(lat);
+  const tip = [lon, lat];
+  const ring = [tip];
+  const steps = 8; // few points along the arc for a smooth wedge edge
+  for (let i = 0; i <= steps; i++) {
+    const a = headingDeg - halfFovDeg + (2 * halfFovDeg * i) / steps;
+    const ar = a * Math.PI / 180;
+    const dx = Math.sin(ar) * lengthM; // east component
+    const dy = Math.cos(ar) * lengthM; // north component
+    ring.push([lon + dx * dLon, lat + dy * dLat]);
+  }
+  ring.push(tip);
+  return ring;
+}
+
+function projectCircle(lon, lat, radiusM) {
+  const { dLat, dLon } = metersToDegLocal(lat);
+  const ring = [];
+  const steps = 24;
+  for (let i = 0; i <= steps; i++) {
+    const ar = (i / steps) * 2 * Math.PI;
+    ring.push([lon + Math.sin(ar) * radiusM * dLon, lat + Math.cos(ar) * radiusM * dLat]);
+  }
+  return ring;
+}
+
+function buildConeFeatures(top) {
+  const features = [];
+  if (!Array.isArray(top)) return features;
+  top.forEach((img, idx) => {
+    if (typeof img.lon !== "number" || typeof img.lat !== "number") return;
+    let ring;
+    if (img.is_pano) {
+      ring = projectCircle(img.lon, img.lat, PANO_RADIUS_M);
+    } else if (typeof img.compass === "number") {
+      ring = projectWedge(img.lon, img.lat, img.compass, VIEW_CONE_LEN_M, VIEW_CONE_HALF_FOV);
+    } else {
+      return;
+    }
+    features.push({
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [ring] },
+      properties: {
+        id: String(img.id),
+        idx,
+        looks_at_school: !!img.looks_at_school,
+        is_pano: !!img.is_pano,
+        active: false,
+      },
+    });
+  });
+  return features;
+}
+
+function emptyFc() { return { type: "FeatureCollection", features: [] }; }
+
+function ensureConeLayer() {
+  if (map.getSource("view-cones")) return;
+  map.addSource("view-cones", { type: "geojson", data: emptyFc() });
+  map.addLayer({
+    id: "view-cones-fill",
+    type: "fill",
+    source: "view-cones",
+    paint: {
+      "fill-color": [
+        "case",
+        ["get", "active"], "#d73f3f",
+        ["get", "looks_at_school"], "#3fb950",
+        "#8b949e",
+      ],
+      "fill-opacity": [
+        "case",
+        ["get", "active"], 0.55,
+        ["get", "looks_at_school"], 0.35,
+        0.22,
+      ],
+    },
+  });
+  map.addLayer({
+    id: "view-cones-outline",
+    type: "line",
+    source: "view-cones",
+    paint: {
+      "line-color": [
+        "case",
+        ["get", "active"], "#d73f3f",
+        ["get", "looks_at_school"], "#3fb950",
+        "#8b949e",
+      ],
+      "line-width": ["case", ["get", "active"], 2.5, 1],
+      "line-opacity": 0.95,
+    },
+  });
+}
+
+function setActiveCone(imageId) {
+  const src = map.getSource("view-cones");
+  if (!src) return;
+  const data = src._data; // we just set it so this is fine
+  if (!data || !data.features) return;
+  let changed = false;
+  for (const f of data.features) {
+    const want = f.properties.id === imageId;
+    if (f.properties.active !== want) {
+      f.properties.active = want;
+      changed = true;
+    }
+  }
+  if (changed) src.setData(data);
+}
+
+function showConesFor(top) {
+  ensureConeLayer();
+  const fc = { type: "FeatureCollection", features: buildConeFeatures(top) };
+  map.getSource("view-cones").setData(fc);
+}
+
+function clearCones() {
+  if (map.getSource("view-cones")) {
+    map.getSource("view-cones").setData(emptyFc());
+  }
+}
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+async function fetchThumbs(ids, size = "thumb_256_url", signal) {
+  const need = ids.filter(id => !thumbCache.has(`${id}|${size}`));
+  await Promise.all(need.map(async (id) => {
+    const key = `${id}|${size}`;
+    if (inflight.has(key)) return inflight.get(key);
+    const p = (async () => {
+      try {
+        const r = await fetch(
+          mlyGraphUrl(encodeURIComponent(id), { fields: size }),
+          { signal }
+        );
+        if (!r.ok) throw new Error(`http ${r.status}`);
+        const j = await r.json();
+        thumbCache.set(key, j[size] || null);
+      } catch (e) {
+        if (e.name !== "AbortError") console.warn("thumb fetch failed", id, e);
+        if (!signal || !signal.aborted) thumbCache.set(key, null);
+      } finally {
+        inflight.delete(key);
+      }
+    })();
+    inflight.set(key, p);
+    return p;
+  }));
+  return ids.map(id => thumbCache.get(`${id}|${size}`));
+}
+
+function fmtDate(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtDist(m) {
+  if (m == null) return "";
+  return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
+}
+
+function buildPanelBody(props) {
+  const covered = props.mly_count > 0;
+  const top = (props.mly_top || []).slice(0, 6);
+  const country = escapeHtml(COUNTRY_NAMES[props.iso] || props.iso || "");
+  const level = escapeHtml(props.level || "-");
+  const source = escapeHtml(props.source || "-");
+
+  let photoCells;
+  if (!covered) {
+    photoCells = '<div class="thumb-empty full-empty">No Mapillary images within 250m</div>';
+  } else if (!top.length) {
+    photoCells = `<div class="thumb-empty full-empty">${props.mly_count} image(s) reported but none geo-validated within 250m. Likely corrupt SfM geometry from Mapillary - try the vector-tile sequences nearby.</div>`;
+  } else {
+    photoCells = top.map((img, i) => {
+      const ymd = escapeHtml(fmtDate(img.captured_at).slice(0, 7));
+      const dist = escapeHtml(fmtDist(img.dist_m));
+      const id = escapeHtml(img.id);
+      const pano = img.is_pano ? '<span class="pano-marker"><span class="badge pano">360</span></span>' : "";
+      const face = img.looks_at_school && !img.is_pano ? '<span class="face-marker" title="Camera aimed within +/-45 deg of the school">TOWARD</span>' : "";
+      return `
+        <div class="thumb thumb-loading" data-img-idx="${i}" data-img-id="${id}">
+          <span>loading...</span>
+          ${pano}${face}
+          <span class="thumb-meta"><span>${ymd}</span><span>${dist}</span></span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  const facesAny = top.some(t => t.looks_at_school);
+  const hint = (covered && top.length)
+    ? `<p class="photo-hint">${facesAny ? '<span style="color:var(--green);">TOWARD</span> = camera aimed at the school. ' : ""}Wedges on the map show the camera viewing direction. Click any thumbnail for the panoramic viewer.</p>`
+    : "";
+
+  return `
+    <div class="popup-meta">
+      <div class="popup-row"><span class="label">Country</span><span>${country}</span></div>
+      <div class="popup-row"><span class="label">Level</span><span>${level}</span></div>
+      <div class="popup-row"><span class="label">Source</span><span>${source}</span></div>
+      <div class="popup-row"><span class="label">Coverage</span><span class="badge ${covered ? 'covered' : 'nope'}">${covered ? `${escapeHtml(String(props.mly_count))} img` : 'none'}</span></div>
+    </div>
+    <div class="photo-strip">${photoCells}</div>
+    ${hint}
+  `;
+}
+
+let activeSchool = null; // {props, top: [...]}
+let popupAbort = null;
+
+function fitToSchoolAndCones(lon, lat, top) {
+  // Compute a bbox covering the school and all photo positions; then fit
+  // with right-padding so the docked info-panel doesn't cover the wedges.
+  const lons = [lon];
+  const lats = [lat];
+  for (const t of (top || [])) {
+    if (typeof t.lon === "number" && typeof t.lat === "number") {
+      lons.push(t.lon); lats.push(t.lat);
+    }
+  }
+  if (lons.length < 2) {
+    map.easeTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 17), padding: { right: 380 }, duration: 500 });
+    return;
+  }
+  const pad = 0.0008;
+  const bounds = [
+    [Math.min(...lons) - pad, Math.min(...lats) - pad],
+    [Math.max(...lons) + pad, Math.max(...lats) + pad],
+  ];
+  map.fitBounds(bounds, { padding: { top: 60, right: 380, bottom: 60, left: 60 }, duration: 500, maxZoom: 18 });
+}
+
+function openInfoPanel(props, top) {
+  const panel = document.getElementById("info-panel");
+  document.getElementById("ip-title").textContent = props.name || "(unnamed)";
+  document.getElementById("ip-sub").textContent = `${COUNTRY_NAMES[props.iso] || props.iso || ""}${props.level ? " - " + props.level : ""}${props.source ? " - " + props.source : ""}`;
+  const body = document.getElementById("ip-body");
+  body.innerHTML = buildPanelBody(props);
+  panel.classList.add("open");
+  if (popupAbort) popupAbort.abort();
+  popupAbort = new AbortController();
+  hydratePopupThumbs(top || [], body, props, popupAbort.signal);
+}
+
+function closeInfoPanel() {
+  document.getElementById("info-panel").classList.remove("open");
+  if (popupAbort) popupAbort.abort();
+  if (!document.getElementById("modal-overlay").classList.contains("open")) {
+    clearCones();
+    activeSchool = null;
+    map.easeTo({ padding: { top: 0, right: 0, bottom: 0, left: 0 }, duration: 300 });
+  }
+}
+
+document.getElementById("ip-close").addEventListener("click", closeInfoPanel);
+
+async function hydratePopupThumbs(top, popupEl, schoolProps, signal) {
+  if (!top || !top.length) return;
+  const ids = top.map(img => img.id);
+  let urls;
+  try {
+    urls = await fetchThumbs(ids, "thumb_256_url", signal);
+  } catch (e) { return; }
+  if (signal && signal.aborted) return;
+  ids.forEach((id, i) => {
+    const cell = popupEl.querySelector(`[data-img-id="${CSS.escape(id)}"]`);
+    if (!cell) return;
+    cell.classList.remove("thumb-loading");
+    const url = urls[i];
+    const img = top[i];
+    if (url) {
+      const ymd = escapeHtml(fmtDate(img.captured_at).slice(0, 7));
+      const dist = escapeHtml(fmtDist(img.dist_m));
+      const pano = img.is_pano ? '<span class="pano-marker"><span class="badge pano">360</span></span>' : "";
+      const face = img.looks_at_school && !img.is_pano ? '<span class="face-marker" title="Camera aimed within +/-45 deg of the school">TOWARD</span>' : "";
+      cell.innerHTML = `
+        <img src="${escapeHtml(url)}" alt="" loading="lazy" />
+        ${pano}${face}
+        <span class="thumb-meta"><span>${ymd}</span><span>${dist}</span></span>
+      `;
+    } else {
+      cell.classList.add("thumb-empty");
+      cell.innerHTML = "<span>n/a</span>";
+    }
+    cell.addEventListener("click", () => openViewer(img.id, top, schoolProps));
+  });
+}
+
+// ---- viewer minimap (picture-in-picture inside the viewer modal) ----
+let miniMap = null;
+let miniSchoolMarker = null;
+
+function ensureMinimap(schoolLon, schoolLat, top) {
+  const container = document.getElementById("viewer-minimap");
+  if (!container) return;
+  // Clean up any prior instance
+  destroyMinimap();
+  miniMap = new maplibregl.Map({
+    container,
+    style: {
+      version: 8,
+      sources: { base: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256 } },
+      layers: [
+        { id: "base", type: "raster", source: "base", paint: { "raster-saturation": -0.4, "raster-brightness-min": 0.05, "raster-brightness-max": 0.9 } },
+      ],
+    },
+    center: [schoolLon, schoolLat],
+    zoom: 16.5,
+    attributionControl: false,
+    interactive: false,
+  });
+  miniMap.on("load", () => {
+    miniMap.addSource("cones", { type: "geojson", data: { type: "FeatureCollection", features: buildConeFeatures(top) } });
+    miniMap.addLayer({
+      id: "cones-fill",
+      type: "fill",
+      source: "cones",
+      paint: {
+        "fill-color": [
+          "case",
+          ["get", "active"], "#d73f3f",
+          ["get", "looks_at_school"], "#3fb950",
+          "#8b949e",
+        ],
+        "fill-opacity": [
+          "case",
+          ["get", "active"], 0.65,
+          ["get", "looks_at_school"], 0.45,
+          0.3,
+        ],
+      },
+    });
+    miniMap.addLayer({
+      id: "cones-outline",
+      type: "line",
+      source: "cones",
+      paint: {
+        "line-color": [
+          "case",
+          ["get", "active"], "#d73f3f",
+          ["get", "looks_at_school"], "#3fb950",
+          "#8b949e",
+        ],
+        "line-width": ["case", ["get", "active"], 2.5, 1],
+        "line-opacity": 0.95,
+      },
+    });
+    // School marker
+    const el = document.createElement("div");
+    el.style.cssText = "width:12px;height:12px;border-radius:50%;background:#ffd700;border:2px solid #000;box-shadow:0 0 0 2px #ffd700;";
+    miniSchoolMarker = new maplibregl.Marker({ element: el }).setLngLat([schoolLon, schoolLat]).addTo(miniMap);
+    // Fit to school + cones
+    const lons = [schoolLon]; const lats = [schoolLat];
+    for (const t of top || []) {
+      if (typeof t.lon === "number") { lons.push(t.lon); lats.push(t.lat); }
+    }
+    if (lons.length > 1) {
+      const pad = 0.0004;
+      miniMap.fitBounds(
+        [[Math.min(...lons) - pad, Math.min(...lats) - pad], [Math.max(...lons) + pad, Math.max(...lats) + pad]],
+        { padding: 12, duration: 0, maxZoom: 18 }
+      );
+    }
+  });
+}
+
+function setMinimapActive(imageId) {
+  if (!miniMap || !miniMap.getSource("cones")) return;
+  const data = miniMap.getSource("cones")._data;
+  if (!data || !data.features) return;
+  let changed = false;
+  for (const f of data.features) {
+    const want = f.properties.id === imageId;
+    if (f.properties.active !== want) {
+      f.properties.active = want;
+      changed = true;
+    }
+  }
+  if (changed) miniMap.getSource("cones").setData(data);
+}
+
+function destroyMinimap() {
+  if (miniSchoolMarker) { try { miniSchoolMarker.remove(); } catch (_) {} miniSchoolMarker = null; }
+  if (miniMap) {
+    try { miniMap.remove(); } catch (e) { console.warn("minimap remove failed", e); }
+    miniMap = null;
+  }
+  const container = document.getElementById("viewer-minimap");
+  if (container) {
+    // Reset the container - the map's canvas remains otherwise
+    container.innerHTML = '<span id="viewer-minimap-label">School map</span>';
+  }
+}
+
+// ---- viewer modal ----
+let viewer = null;
+let stripToken = 0; // monotonic counter to ignore stale strip builds
+
+function onWindowResize() { if (viewer) viewer.resize(); }
+window.addEventListener("resize", onWindowResize);
+
+function ensureViewer(imageId) {
+  const container = document.getElementById("viewer-container");
+  if (!viewer) {
+    container.innerHTML = "";
+    const viewerOpts = { container, imageId, component: { cover: false } };
+    if (USE_PROXY) {
+      // Route the viewer's API + image tile traffic through the Worker, which
+      // injects the token server-side. accessToken is required by the API but
+      // is ignored by the proxy, so a placeholder is fine and ships no secret.
+      viewerOpts.accessToken = "MLY|proxy";
+      viewerOpts.dataProvider = new mapillary.GraphDataProvider({
+        endpoint: `${PROXY_BASE}/graph`,
+        tileUrl: `${PROXY_BASE}/tiles`,
+      });
+    } else {
+      viewerOpts.accessToken = TOKEN;
+    }
+    viewer = new mapillary.Viewer(viewerOpts);
+    // Whenever the viewer moves to a new image (sequence navigation, click
+    // on an arrow, etc), highlight the corresponding cone if it's one of
+    // the school's TOP_N photos. Stale photos remain in their default style.
+    viewer.on("image", (ev) => {
+      const id = ev && ev.image && ev.image.id ? String(ev.image.id) : null;
+      if (!id) return;
+      setActiveStripThumb(id);
+      setActiveCone(id);
+      setMinimapActive(id);
+      if (activeSchool && activeSchool.top) {
+        const img = activeSchool.top.find(t => String(t.id) === id);
+        if (img) updateModalMeta(img);
+      }
+    });
+  } else {
+    viewer.moveTo(imageId).catch(err => console.warn("moveTo failed", err));
+  }
+}
+
+function setActiveStripThumb(id) {
+  document.querySelectorAll("#viewer-strip .vthumb").forEach(el => {
+    el.classList.toggle("active", el.dataset.id === id);
+  });
+}
+
+async function buildViewerStrip(top, activeId) {
+  const myToken = ++stripToken;
+  const strip = document.getElementById("viewer-strip");
+  strip.innerHTML = top.map(img => {
+    const ymd = escapeHtml(fmtDate(img.captured_at).slice(0, 7));
+    const dist = escapeHtml(fmtDist(img.dist_m));
+    const pano = img.is_pano ? '<span class="pano-tag">360</span>' : "";
+    const id = escapeHtml(img.id);
+    return `
+      <div class="vthumb${img.id === activeId ? ' active' : ''}" data-id="${id}">
+        <span>...</span>
+        ${pano}
+        <span class="vthumb-meta">${ymd} · ${dist}</span>
+      </div>
+    `;
+  }).join("");
+  const urls = await fetchThumbs(top.map(t => t.id), "thumb_256_url");
+  if (myToken !== stripToken) return; // newer strip build won the race
+  top.forEach((img, i) => {
+    const el = strip.querySelector(`[data-id="${CSS.escape(img.id)}"]`);
+    if (!el) return;
+    if (urls[i]) {
+      const meta = el.querySelector(".vthumb-meta").outerHTML;
+      const tag = img.is_pano ? '<span class="pano-tag">360</span>' : "";
+      el.innerHTML = `<img src="${escapeHtml(urls[i])}" alt="" />${tag}${meta}`;
+    }
+    el.addEventListener("click", () => {
+      ensureViewer(img.id);
+      setActiveStripThumb(img.id);
+      setActiveCone(img.id);
+      setMinimapActive(img.id);
+      updateModalMeta(img);
+    });
+  });
+}
+
+function updateModalMeta(img) {
+  const date = fmtDate(img.captured_at);
+  const meta = document.getElementById("modal-meta");
+  meta.textContent = `${date} · ${fmtDist(img.dist_m)} · ${img.is_pano ? "360 pano" : "perspective"}`;
+}
+
+let lastFocus = null;
+function openViewer(imageId, top, schoolProps) {
+  const overlay = document.getElementById("modal-overlay");
+  const title = document.getElementById("modal-title");
+  title.textContent = (schoolProps && schoolProps.name) ? `${schoolProps.name} - ${COUNTRY_NAMES[schoolProps.iso] || ""}` : "School photo";
+  const img = (top || []).find(t => t.id === imageId) || { id: imageId };
+  updateModalMeta(img);
+  lastFocus = document.activeElement;
+  overlay.classList.add("open");
+  // Make sure cones for this school's photos are on the map (panel might
+  // have been closed before the user clicked the thumb).
+  if (top && top.length) showConesFor(top);
+  // Find the school point for the minimap. Prefer activeSchool's cached
+  // coords (set when the user clicked the map dot); fall back to a centroid
+  // of the photo positions for the thumb-click-without-panel case.
+  let schoolLon = activeSchool && typeof activeSchool.lon === "number" ? activeSchool.lon : null;
+  let schoolLat = activeSchool && typeof activeSchool.lat === "number" ? activeSchool.lat : null;
+  if (schoolLon == null && top && top.length) {
+    schoolLon = top.reduce((a, t) => a + t.lon, 0) / top.length;
+    schoolLat = top.reduce((a, t) => a + t.lat, 0) / top.length;
+  }
+  if (schoolLon != null && top && top.length) {
+    ensureMinimap(schoolLon, schoolLat, top);
+    setTimeout(() => setMinimapActive(imageId), 350);
+  }
+  ensureViewer(imageId);
+  setActiveCone(imageId);
+  if (top && top.length > 1) buildViewerStrip(top, imageId);
+  else document.getElementById("viewer-strip").innerHTML = "";
+  setTimeout(() => document.getElementById("modal-close").focus(), 50);
+}
+
+function closeViewer() {
+  document.getElementById("modal-overlay").classList.remove("open");
+  if (viewer) {
+    try { viewer.remove(); } catch (e) { console.warn(e); }
+    viewer = null;
+    document.getElementById("viewer-container").innerHTML = '<div id="viewer-loading">Loading viewer...</div>';
+  }
+  // Tear down minimap if it was created.
+  destroyMinimap();
+  // Cones stay if the info panel is still open; clear otherwise.
+  if (!document.getElementById("info-panel").classList.contains("open")) {
+    clearCones();
+    activeSchool = null;
+    map.easeTo({ padding: { top: 0, right: 0, bottom: 0, left: 0 }, duration: 300 });
+  }
+  if (lastFocus && typeof lastFocus.focus === "function") {
+    try { lastFocus.focus(); } catch (_) {}
+  }
+}
+
+document.getElementById("modal-close").addEventListener("click", closeViewer);
+document.getElementById("modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "modal-overlay") closeViewer();
+});
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeViewer();
+});
+
+async function addSchoolLayers() {
+  // PUBLIC BUILD: load OPEN data only.
+  //   - NER/GIN/MLI/BEN: schools_<ISO>_osm.geojson  (OpenStreetMap)
+  //   - GHA: schools_GHA.geojson                     (also OpenStreetMap)
+  // The Giga-derived schools_<ISO>.geojson and sampled_coverage.geojson are
+  // deliberately NOT fetched here (open data only). They are gitignored so
+  // they cannot be published.
+  const osmAll = { type: "FeatureCollection", features: [] };
+  const osmFiles = {
+    NER: "./data/schools_NER_osm.geojson",
+    GIN: "./data/schools_GIN_osm.geojson",
+    MLI: "./data/schools_MLI_osm.geojson",
+    BEN: "./data/schools_BEN_osm.geojson",
+    GHA: "./data/schools_GHA.geojson", // Ghana source is OSM
+  };
+  for (const iso of Object.keys(osmFiles)) {
+    try {
+      const r = await fetch(osmFiles[iso]);
+      if (!r.ok) continue;
+      const fc = await r.json();
+      // Ensure every feature carries its ISO for the per-country color match.
+      for (const f of fc.features || []) {
+        if (f.properties && f.properties.iso == null) f.properties.iso = iso;
+      }
+      osmAll.features.push(...fc.features);
+    } catch (e) { console.warn("osm", iso, e); }
+  }
+  map.addSource("schools-osm", { type: "geojson", data: osmAll });
+  map.addLayer({
+    id: "schools-osm",
+    type: "circle",
+    source: "schools-osm",
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 1.2, 8, 2.5, 12, 4.5],
+      "circle-color": ["match", ["get", "iso"],
+        "NER", COUNTRY_COLORS.NER,
+        "GIN", COUNTRY_COLORS.GIN,
+        "MLI", COUNTRY_COLORS.MLI,
+        "BEN", COUNTRY_COLORS.BEN,
+        "GHA", COUNTRY_COLORS.GHA,
+        "#4096ff"],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 0.4,
+      "circle-opacity": 0.6,
+    },
+  });
+
+  document.getElementById("loading").remove();
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch("./data/coverage_summary.json");
+    if (!r.ok) throw new Error("no summary yet");
+    const rows = await r.json();
+    const tbody = document.querySelector("#stats tbody");
+    tbody.innerHTML = "";
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.className = "country-row";
+      tr.dataset.iso = row.iso;
+      const raw250 = row.pct_covered_raw ?? row.pct_covered ?? 0;
+      const uniq250 = row.pct_covered_unique ?? raw250;
+      const raw100 = row.pct_covered_close_raw ?? 0;
+      const uniq100 = row.pct_covered_close_unique ?? raw100;
+      const inflated250 = (raw250 - uniq250) >= 5;
+      const inflated100 = (raw100 - uniq100) >= 5;
+      const medYr = row.median_year_when_covered;
+      const yrColor = medYr == null ? "var(--muted)" : medYr >= 2023 ? "var(--green)" : medYr >= 2020 ? "var(--amber)" : "var(--red)";
+      const dualCell = (raw, uniq, inflated, barColor) => `
+        <div class="pct-cell">
+          <span style="${inflated?'color:var(--amber);':''}">${raw.toFixed(1)}%</span>
+          <span class="pct-bar"><span style="background:${barColor};width:${Math.min(100, raw)}%"></span></span>
+          <span class="pct-sub">uniq ${uniq.toFixed(1)}%</span>
+        </div>`;
+      tr.innerHTML = `
+        <td><span class="status-dot" style="background:${COUNTRY_COLORS[row.iso]}"></span>${COUNTRY_NAMES[row.iso]}<div style="font-size:10px;color:var(--muted);">${COUNTRY_TOTALS[row.iso].toLocaleString()} total</div></td>
+        <td class="num">${row.sample_size}</td>
+        <td class="num">${dualCell(raw250, uniq250, inflated250, "var(--amber)")}</td>
+        <td class="num">${dualCell(raw100, uniq100, inflated100, "var(--green)")}</td>
+        <td class="num" style="color:${yrColor};font-weight:600;">${medYr || "-"}</td>
+      `;
+      tr.addEventListener("click", () => zoomToCountry(row.iso));
+      tbody.appendChild(tr);
+    }
+  } catch (e) {
+    const tbody = document.querySelector("#stats tbody");
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted); font-style:italic;">Sampling in progress - rerun once <code>coverage_summary.json</code> exists.</td></tr>`;
+  }
+}
+
+const COUNTRY_BBOX = {
+  NER: [0.16, 11.7, 15.99, 23.52],
+  GIN: [-15.08, 7.19, -7.65, 12.67],
+  MLI: [-12.17, 10.16, 4.27, 24.97],
+  BEN: [0.77, 6.24, 3.85, 12.40],
+  GHA: [-3.25, 4.74, 1.19, 11.17],
+};
+function zoomToCountry(iso) {
+  const b = COUNTRY_BBOX[iso];
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, duration: 600 });
+  document.querySelectorAll("tr.country-row").forEach(r => r.classList.toggle("active", r.dataset.iso === iso));
+}
+
+document.querySelectorAll("#basemap-row .basemap-btn").forEach(btn => {
+  btn.addEventListener("click", () => setBasemap(btn.dataset.basemap));
+});
+
+document.getElementById("toggle-mly").addEventListener("change", (e) => {
+  for (const id of ["mly-overview", "mly-sequence"]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", e.target.checked ? "visible" : "none");
+  }
+});
+document.getElementById("toggle-osm").addEventListener("change", (e) => {
+  if (map.getLayer("schools-osm")) map.setLayoutProperty("schools-osm", "visibility", e.target.checked ? "visible" : "none");
+});
+
+map.on("load", () => {
+  addMapillaryLayer();
+  addSchoolLayers();
+  loadStats();
+});
+</script>
+</body>
+</html>
