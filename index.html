@@ -143,7 +143,7 @@
       </thead>
       <tbody></tbody>
     </table>
-    <p class="sub" style="margin-top:8px;font-size:11px;">Raw % (top) shown over unique % (bottom, dedup'd by coordinate). Guinea raw inflates because many source rows share a single Conakry centroid. The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound.</p>
+    <p class="sub" style="margin-top:8px;font-size:11px;">Share of a per-country random sample of 800 OSM school points (seed=42). The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound. Where OSM rows stack on one coordinate, a dedup'd unique-location % is shown underneath (rare; only Mali differs).</p>
 
     <h2>Basemap</h2>
     <div class="basemap-row" id="basemap-row">
@@ -154,24 +154,23 @@
 
     <h2>Layers</h2>
     <label class="toggle"><input type="checkbox" id="toggle-mly" checked /> Mapillary sequences (street-level)</label>
-    <label class="toggle"><input type="checkbox" id="toggle-cov" checked /> School photo coverage (green/red)</label>
+    <label class="toggle"><input type="checkbox" id="toggle-cov" checked /> School photo coverage (by distance)</label>
     <label class="toggle"><input type="checkbox" id="toggle-osm" checked /> All schools (OSM, by country)</label>
 
     <h2>Legend</h2>
     <div class="legend">
       <div class="legend-item"><span class="legend-line" style="background: #35aadc"></span> Mapillary sequence (any year)</div>
-      <div class="legend-item"><span class="legend-swatch" style="background: #3fb950"></span> School with a Mapillary photo within 250m (click for photos)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #3fb950"></span> Sampled school, photo within 100m (click for photos)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #d29922"></span> Sampled school, photo within 100-250m (click for photos)</div>
       <div class="legend-item"><span class="legend-swatch" style="background: #d9534f"></span> Sampled school, no photo within 250m</div>
-      <div class="legend-item"><span class="legend-swatch" style="background: #f2a93b"></span> All schools (OSM), coloured by country</div>
+      <div class="legend-item"><span style="display:inline-flex;gap:1px;flex-shrink:0;"><span class="legend-swatch" style="width:7px;height:7px;background:#f2a93b"></span><span class="legend-swatch" style="width:7px;height:7px;background:#4dabf7"></span><span class="legend-swatch" style="width:7px;height:7px;background:#c084fc"></span><span class="legend-swatch" style="width:7px;height:7px;background:#34d399"></span><span class="legend-swatch" style="width:7px;height:7px;background:#f472b6"></span></span> All schools (OSM), coloured by country</div>
     </div>
 
     <h2>Browse photos</h2>
-    <p class="sub" style="font-size:11px;line-height:1.5;">Click any <b style="color:#3fb950">green</b> school to browse the Mapillary photos near it (ranked camera-facing-the-school first) and open the panoramic viewer. Or pan/zoom to a town to see the street-level coverage lines.</p>
+    <p class="sub" style="font-size:11px;line-height:1.5;">Click any <b style="color:#3fb950">green</b> or <b style="color:#d29922">amber</b> school to browse the Mapillary photos near it (ranked camera-facing-the-school first) and open the panoramic viewer. Or pan/zoom to a town to see the street-level coverage lines.</p>
 
     <div class="footer-note">
-      School points come from OpenStreetMap (amenity=school). Coverage = one or more Mapillary images within 250m of a school point. The table and the green/red dots show results from a per-country random sample of 800 schools (seed=42). The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound.
-      <br><br>
-      <strong>Data note</strong>: Guinea's raw % inflates because some source rows share a single Conakry centroid; prefer the Unique % column for Guinea.
+      School points come from OpenStreetMap (amenity=school). Coverage = one or more geo-validated Mapillary images within 250m of a school point. The table and the coloured dots show results from a per-country random sample of 800 schools (seed=42): green = nearest photo within 100m, amber = within 100-250m, red = none within 250m.
     </div>
   </aside>
   <div id="map">
@@ -209,7 +208,9 @@
 <script src="./config.js" onerror="document.getElementById('token-banner').style.display='block'"></script>
 <script>
 const COUNTRY_NAMES = { NER: "Niger", GIN: "Guinea", MLI: "Mali", BEN: "Benin", GHA: "Ghana" };
-const COUNTRY_TOTALS = { NER: 19490, GIN: 15284, MLI: 11810, BEN: 7697, GHA: 4506 };
+// Totals of the OSM amenity=school files the sample is drawn from
+// (data/schools_<ISO>_osm.geojson; Ghana's OSM file has no suffix).
+const COUNTRY_TOTALS = { NER: 2514, GIN: 2352, MLI: 11816, BEN: 2739, GHA: 4506 };
 const COUNTRY_COLORS = { NER: "#f2a93b", GIN: "#4dabf7", MLI: "#c084fc", BEN: "#34d399", GHA: "#f472b6" };
 
 // ---- Mapillary access: proxy (public build) vs direct token (local dev) ----
@@ -981,9 +982,9 @@ async function addSchoolLayers() {
   });
 
   // Coverage layer (open, OSM-based): sampled schools with Mapillary coverage +
-  // photo lists. Green = a street-level photo within 250m; red = none. Click a
-  // school to open the photo browser. (Giga-free replacement for the old
-  // sampled_coverage.geojson.)
+  // photo lists. Green = a street-level photo within 100m (mly_close), amber =
+  // within 100-250m, red = none within 250m. Click a covered school to open the
+  // photo browser. (Giga-free replacement for the old sampled_coverage.geojson.)
   try {
     const cr = await fetch("./data/sampled_coverage_osm.geojson");
     if (cr.ok) {
@@ -996,7 +997,10 @@ async function addSchoolLayers() {
         source: "coverage",
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 2.2, 8, 4, 14, 6.5],
-          "circle-color": ["case", [">", ["get", "mly_count"], 0], "#3fb950", "#d9534f"],
+          "circle-color": ["case",
+            ["all", [">", ["get", "mly_count"], 0], ["to-boolean", ["get", "mly_close"]]], "#3fb950",
+            [">", ["get", "mly_count"], 0], "#d29922",
+            "#d9534f"],
           "circle-stroke-color": "#0b0e13",
           "circle-stroke-width": 1,
           "circle-opacity": 0.95,
@@ -1036,21 +1040,21 @@ async function loadStats() {
       const uniq250 = row.pct_covered_unique ?? raw250;
       const raw100 = row.pct_covered_close_raw ?? 0;
       const uniq100 = row.pct_covered_close_unique ?? raw100;
-      const inflated250 = (raw250 - uniq250) >= 5;
-      const inflated100 = (raw100 - uniq100) >= 5;
       const medYr = row.median_year_when_covered;
       const yrColor = medYr == null ? "var(--muted)" : medYr >= 2023 ? "var(--green)" : medYr >= 2020 ? "var(--amber)" : "var(--red)";
-      const dualCell = (raw, uniq, inflated, barColor) => `
+      // Show the unique-coordinate % only when it actually differs from the
+      // raw % (OSM points rarely stack; this mattered for the old Giga data).
+      const dualCell = (raw, uniq, barColor) => `
         <div class="pct-cell">
-          <span style="${inflated?'color:var(--amber);':''}">${raw.toFixed(1)}%</span>
+          <span>${raw.toFixed(1)}%</span>
           <span class="pct-bar"><span style="background:${barColor};width:${Math.min(100, raw)}%"></span></span>
-          <span class="pct-sub">uniq ${uniq.toFixed(1)}%</span>
+          ${raw.toFixed(1) !== uniq.toFixed(1) ? `<span class="pct-sub">uniq ${uniq.toFixed(1)}%</span>` : ""}
         </div>`;
       tr.innerHTML = `
-        <td><span class="status-dot" style="background:${COUNTRY_COLORS[row.iso]}"></span>${COUNTRY_NAMES[row.iso]}<div style="font-size:10px;color:var(--muted);">${COUNTRY_TOTALS[row.iso].toLocaleString()} total</div></td>
+        <td><span class="status-dot" style="background:${COUNTRY_COLORS[row.iso]}"></span>${COUNTRY_NAMES[row.iso]}<div style="font-size:10px;color:var(--muted);">${COUNTRY_TOTALS[row.iso].toLocaleString()} in OSM</div></td>
         <td class="num">${row.sample_size}</td>
-        <td class="num">${dualCell(raw250, uniq250, inflated250, "var(--amber)")}</td>
-        <td class="num">${dualCell(raw100, uniq100, inflated100, "var(--green)")}</td>
+        <td class="num">${dualCell(raw250, uniq250, "var(--amber)")}</td>
+        <td class="num">${dualCell(raw100, uniq100, "var(--green)")}</td>
         <td class="num" style="color:${yrColor};font-weight:600;">${medYr || "-"}</td>
       `;
       tr.addEventListener("click", () => zoomToCountry(row.iso));

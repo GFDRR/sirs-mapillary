@@ -1,6 +1,6 @@
 # sirs-mapillary
 
-**Live app: https://gfdrr.github.io/sirs-mapillary/** (school + coverage layers load from open data; the Mapillary photo layers activate once the token proxy is deployed - see [`DEPLOY.md`](DEPLOY.md))
+**Live app: https://gfdrr.github.io/sirs-mapillary/** (school + coverage layers load from open data; Mapillary photo layers go through a token proxy - see [`DEPLOY.md`](DEPLOY.md))
 
 A lightweight web map showing where **Mapillary street-level photos** already exist near schools, for the School Infrastructure Risk Screening (SIRS) work across five West African countries: Niger, Mali, Guinea, Benin, Ghana.
 

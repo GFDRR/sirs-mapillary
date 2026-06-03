@@ -2,6 +2,7 @@
   {
     "iso": "NER",
     "sample_size": 800,
+    "unique_locations_in_sample": 800,
     "covered_raw": 125,
     "covered_unique": 125,
     "pct_covered_raw": 15.6,
@@ -14,10 +15,11 @@
   {
     "iso": "GIN",
     "sample_size": 800,
+    "unique_locations_in_sample": 799,
     "covered_raw": 217,
     "covered_unique": 217,
     "pct_covered_raw": 27.1,
-    "pct_covered_unique": 27.1,
+    "pct_covered_unique": 27.2,
     "pct_covered_close_raw": 15.4,
     "pct_covered_close_unique": 15.4,
     "median_year_when_covered": 2020,
@@ -26,18 +28,20 @@
   {
     "iso": "MLI",
     "sample_size": 800,
+    "unique_locations_in_sample": 788,
     "covered_raw": 91,
-    "covered_unique": 91,
+    "covered_unique": 89,
     "pct_covered_raw": 11.4,
-    "pct_covered_unique": 11.4,
+    "pct_covered_unique": 11.3,
     "pct_covered_close_raw": 6.2,
-    "pct_covered_close_unique": 6.2,
+    "pct_covered_close_unique": 6.1,
     "median_year_when_covered": 2020,
     "latest_year_observed": 2024
   },
   {
     "iso": "BEN",
     "sample_size": 800,
+    "unique_locations_in_sample": 800,
     "covered_raw": 108,
     "covered_unique": 108,
     "pct_covered_raw": 13.5,
@@ -50,6 +54,7 @@
   {
     "iso": "GHA",
     "sample_size": 800,
+    "unique_locations_in_sample": 800,
     "covered_raw": 328,
     "covered_unique": 328,
     "pct_covered_raw": 41.0,
