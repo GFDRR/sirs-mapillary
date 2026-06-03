@@ -794,27 +794,35 @@ let stripToken = 0; // monotonic counter to ignore stale strip builds
 function onWindowResize() { if (viewer) viewer.resize(); }
 window.addEventListener("resize", onWindowResize);
 
-// Show the actual Mapillary photo as a large image. We deliberately do NOT use
-// the interactive mapillary-js 3D viewer: behind the public token proxy it
-// cannot reach the image-tile/mesh endpoints and renders black. A large still
-// image (loaded from the CDN thumb URL via the proxied graph API) is robust and
-// is all that is needed to eyeball building characteristics.
-let viewerImgToken = 0;
-async function ensureViewer(imageId) {
+function ensureViewer(imageId) {
   const container = document.getElementById("viewer-container");
-  const myToken = ++viewerImgToken;
-  container.innerHTML = '<div id="viewer-loading">Loading photo...</div>';
-  let url = null;
-  for (const field of ["thumb_2048_url", "thumb_1024_url", "thumb_256_url"]) {
-    try {
-      const r = await fetch(mlyGraphUrl(encodeURIComponent(imageId), { fields: field }));
-      if (r.ok) { const j = await r.json(); if (j[field]) { url = j[field]; break; } }
-    } catch (e) { /* try next field */ }
+  if (!viewer) {
+    container.innerHTML = "";
+    const viewerOpts = { container, imageId, component: { cover: false } };
+    if (USE_PROXY) {
+      // Route the viewer's graph API through the Worker (token injected
+      // server-side). The image/mesh URLs the API returns are pre-signed CDN
+      // links loaded directly by the browser.
+      viewerOpts.accessToken = "MLY|proxy";
+      viewerOpts.dataProvider = new mapillary.GraphDataProvider({ endpoint: `${PROXY_BASE}/graph` });
+    } else {
+      viewerOpts.accessToken = TOKEN;
+    }
+    viewer = new mapillary.Viewer(viewerOpts);
+    viewer.on("image", (ev) => {
+      const id = ev && ev.image && ev.image.id ? String(ev.image.id) : null;
+      if (!id) return;
+      setActiveStripThumb(id);
+      setActiveCone(id);
+      setMinimapActive(id);
+      if (activeSchool && activeSchool.top) {
+        const img = activeSchool.top.find(t => String(t.id) === id);
+        if (img) updateModalMeta(img);
+      }
+    });
+  } else {
+    viewer.moveTo(imageId).catch(err => console.warn("moveTo failed", err));
   }
-  if (myToken !== viewerImgToken) return; // a newer image was requested
-  container.innerHTML = url
-    ? `<img class="viewer-img" src="${escapeHtml(url)}" alt="Mapillary street-level photo" />`
-    : '<div id="viewer-loading">Could not load this photo.</div>';
 }
 
 function setActiveStripThumb(id) {
