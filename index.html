@@ -585,7 +585,7 @@ function buildPanelBody(props) {
 
   const facesAny = top.some(t => t.looks_at_school);
   const hint = (covered && top.length)
-    ? `<p class="photo-hint">${facesAny ? '<span style="color:var(--green);">TOWARD</span> = camera aimed at the school. ' : ""}Wedges on the map show the camera viewing direction. Click any thumbnail to see the full photo.</p>`
+    ? `<p class="photo-hint">${facesAny ? '<span style="color:var(--green);">TOWARD</span> = camera aimed at the school. ' : ""}Wedges on the map show the camera viewing direction. Click any thumbnail to open the street-level viewer.</p>`
     : "";
 
   return `

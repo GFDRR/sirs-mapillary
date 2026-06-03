@@ -75,24 +75,36 @@ export default {
     }
 
     const url = new URL(request.url);
-    // First path segment selects the upstream; the rest is forwarded as-is.
-    const parts = url.pathname.replace(/^\/+/, "").split("/");
-    const kind = parts.shift(); // 'tiles' or 'graph'
-    const base = UPSTREAMS[kind];
-    if (!base) {
-      return new Response("not found - use /tiles/... or /graph/...", {
-        status: 404,
-        headers: cors,
-      });
-    }
+    // Routing:
+    //   /tiles/<path>  -> tiles.mapillary.com/<path>   (vector coverage tiles)
+    //   /graph/<path>  -> graph.mapillary.com/<path>   (our app's thumb fetches)
+    //   /<anything>    -> graph.mapillary.com/<anything> (graph API paths the
+    //                     mapillary-js viewer hits directly, e.g. /images,
+    //                     /sequences, /image_ids)
+    const parts = url.pathname.replace(/^\/+/, "").split("/").filter(Boolean);
+    let base, restParts;
+    if (parts[0] === "tiles") { base = UPSTREAMS.tiles; restParts = parts.slice(1); }
+    else if (parts[0] === "graph") { base = UPSTREAMS.graph; restParts = parts.slice(1); }
+    else { base = UPSTREAMS.graph; restParts = parts; }
 
-    const rest = parts.join("/");
-    const upstream = new URL(`${base}/${rest}`);
+    const upstream = new URL(`${base}/${restParts.join("/")}`);
     // Preserve client query params, then force the access token.
     for (const [k, v] of url.searchParams) {
       if (k.toLowerCase() !== "access_token") upstream.searchParams.set(k, v);
     }
     upstream.searchParams.set("access_token", token);
+
+    // Workaround: Mapillary's API currently 500s whenever `sfm_cluster` is in
+    // the fields list (confirmed direct, every retry). mapillary-js requests it
+    // for the viewer; strip it so the rest of the image data loads (the viewer
+    // renders the photo without the point-cloud/3D reconstruction).
+    const fields = upstream.searchParams.get("fields");
+    if (fields && fields.includes("sfm_cluster")) {
+      upstream.searchParams.set(
+        "fields",
+        fields.split(",").map(s => s.trim()).filter(s => s && s !== "sfm_cluster").join(",")
+      );
+    }
 
     // tiles.mapillary.com sits behind Meta bot protection that serves a CAPTCHA
     // HTML page to requests without a browser User-Agent (Workers send none by
