@@ -153,19 +153,22 @@
 
     <h2>Layers</h2>
     <label class="toggle"><input type="checkbox" id="toggle-mly" checked /> Mapillary sequences (street-level)</label>
-    <label class="toggle"><input type="checkbox" id="toggle-osm" checked /> OSM amenity=school</label>
+    <label class="toggle"><input type="checkbox" id="toggle-cov" checked /> School photo coverage (green/red)</label>
+    <label class="toggle"><input type="checkbox" id="toggle-osm" checked /> All schools (OSM, by country)</label>
 
     <h2>Legend</h2>
     <div class="legend">
       <div class="legend-item"><span class="legend-line" style="background: #35aadc"></span> Mapillary sequence (any year)</div>
-      <div class="legend-item"><span class="legend-swatch" style="background: #f2a93b"></span> School (OpenStreetMap amenity=school)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #3fb950"></span> School with a Mapillary photo within 250m (click for photos)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #d9534f"></span> Sampled school, no photo within 250m</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #f2a93b"></span> All schools (OSM), coloured by country</div>
     </div>
 
     <h2>Browse photos</h2>
-    <p class="sub" style="font-size:11px;line-height:1.5;">Pan or zoom to a town to see Mapillary street-level coverage (blue lines). The coverage table above summarizes how often schools fall within range of a Mapillary image, sampled per country.</p>
+    <p class="sub" style="font-size:11px;line-height:1.5;">Click any <b style="color:#3fb950">green</b> school to browse the Mapillary photos near it (ranked camera-facing-the-school first) and open the panoramic viewer. Or pan/zoom to a town to see the street-level coverage lines.</p>
 
     <div class="footer-note">
-      School points come from OpenStreetMap (amenity=school). Coverage = one or more Mapillary images within 250m of a school point. The table shows results from a per-country random sample of 1,000 schools (seed=42). The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound.
+      School points come from OpenStreetMap (amenity=school). Coverage = one or more Mapillary images within 250m of a school point. The table and the green/red dots show results from a per-country random sample of 800 schools (seed=42). The 100m column is the working distance for taxonomy eyeballing; the 250m column is the loose feasibility bound.
       <br><br>
       <strong>Data note</strong>: Guinea's raw % inflates because some source rows share a single Conakry centroid; prefer the Unique % column for Guinea.
     </div>
@@ -982,6 +985,44 @@ async function addSchoolLayers() {
     },
   });
 
+  // Coverage layer (open, OSM-based): sampled schools with Mapillary coverage +
+  // photo lists. Green = a street-level photo within 250m; red = none. Click a
+  // school to open the photo browser. (Giga-free replacement for the old
+  // sampled_coverage.geojson.)
+  try {
+    const cr = await fetch("./data/sampled_coverage_osm.geojson");
+    if (cr.ok) {
+      const cov = await cr.json();
+      map.addSource("coverage", { type: "geojson", data: cov });
+      ensureConeLayer();
+      map.addLayer({
+        id: "coverage",
+        type: "circle",
+        source: "coverage",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 2.2, 8, 4, 14, 6.5],
+          "circle-color": ["case", [">", ["get", "mly_count"], 0], "#3fb950", "#d9534f"],
+          "circle-stroke-color": "#0b0e13",
+          "circle-stroke-width": 1,
+          "circle-opacity": 0.95,
+        },
+      });
+      map.on("click", "coverage", (e) => {
+        const f = e.features[0];
+        const props = { ...f.properties };
+        let top = [];
+        try { top = typeof props.mly_top === "string" ? JSON.parse(props.mly_top) : (props.mly_top || []); } catch (_) {}
+        props.mly_top = top;
+        openInfoPanel(props, top);
+        showConesFor(top);
+        const [lon, lat] = f.geometry.coordinates;
+        fitToSchoolAndCones(lon, lat, top);
+      });
+      map.on("mouseenter", "coverage", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "coverage", () => { map.getCanvas().style.cursor = ""; });
+    }
+  } catch (e) { console.warn("coverage", e); }
+
   document.getElementById("loading").remove();
 }
 
@@ -1050,6 +1091,9 @@ document.getElementById("toggle-mly").addEventListener("change", (e) => {
 });
 document.getElementById("toggle-osm").addEventListener("change", (e) => {
   if (map.getLayer("schools-osm")) map.setLayoutProperty("schools-osm", "visibility", e.target.checked ? "visible" : "none");
+});
+document.getElementById("toggle-cov").addEventListener("change", (e) => {
+  if (map.getLayer("coverage")) map.setLayoutProperty("coverage", "visibility", e.target.checked ? "visible" : "none");
 });
 
 map.on("load", () => {
