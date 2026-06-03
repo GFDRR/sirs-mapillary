@@ -94,9 +94,16 @@ export default {
     }
     upstream.searchParams.set("access_token", token);
 
+    // tiles.mapillary.com sits behind Meta bot protection that serves a CAPTCHA
+    // HTML page to requests without a browser User-Agent (Workers send none by
+    // default). Send a browser UA + Referer so it returns the actual tile.
     const upstreamResp = await fetch(upstream.toString(), {
       method: request.method,
-      headers: { Accept: request.headers.get("Accept") || "*/*" },
+      headers: {
+        Accept: request.headers.get("Accept") || "*/*",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Referer: "https://www.mapillary.com/",
+      },
     });
 
     // Pass through status + body, add CORS, drop any hop-by-hop headers.
