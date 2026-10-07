@@ -1,0 +1,136 @@
+[
+  {
+    "iso": "NER",
+    "sample_size": 800,
+    "gsv_pct_250m": 0.2,
+    "gsv_pct_100m": 0.1,
+    "gsv_official_pct_250m": 0.0,
+    "gsv_median_year": 2022,
+    "gsv_latest_year": 2022,
+    "gsv_copyright_top": [
+      [
+        "\u00a9 AN 360",
+        2
+      ]
+    ],
+    "mly_pct_250m": 15.6,
+    "either_pct_250m": 15.6,
+    "both_pct_250m": 0.2
+  },
+  {
+    "iso": "GIN",
+    "sample_size": 800,
+    "gsv_pct_250m": 3.6,
+    "gsv_pct_100m": 1.0,
+    "gsv_official_pct_250m": 0.0,
+    "gsv_median_year": 2021,
+    "gsv_latest_year": 2023,
+    "gsv_copyright_top": [
+      [
+        "\u00a9 Fiscal Blackbox",
+        18
+      ],
+      [
+        "\u00a9 Aboubacar Ke\u00efta",
+        4
+      ],
+      [
+        "\u00a9 Kouamelan Philippe N'DRAMAN",
+        2
+      ],
+      [
+        "\u00a9 Alpha Alimou Diallo",
+        2
+      ]
+    ],
+    "mly_pct_250m": 27.1,
+    "either_pct_250m": 27.9,
+    "both_pct_250m": 2.9
+  },
+  {
+    "iso": "MLI",
+    "sample_size": 800,
+    "gsv_pct_250m": 0.5,
+    "gsv_pct_100m": 0.1,
+    "gsv_official_pct_250m": 0.2,
+    "gsv_median_year": 2020,
+    "gsv_latest_year": 2021,
+    "gsv_copyright_top": [
+      [
+        "\u00a9 Google",
+        2
+      ],
+      [
+        "\u00a9 Pierre-G\u00e9rard Suntan",
+        1
+      ],
+      [
+        "\u00a9 bagabaga ousmane",
+        1
+      ]
+    ],
+    "mly_pct_250m": 11.4,
+    "either_pct_250m": 11.6,
+    "both_pct_250m": 0.2
+  },
+  {
+    "iso": "BEN",
+    "sample_size": 800,
+    "gsv_pct_250m": 32.9,
+    "gsv_pct_100m": 21.4,
+    "gsv_official_pct_250m": 0.0,
+    "gsv_median_year": 2026,
+    "gsv_latest_year": 2026,
+    "gsv_copyright_top": [
+      [
+        "\u00a9 Benin Tourisme",
+        255
+      ],
+      [
+        "\u00a9 Mahunakpon carmel Djiha",
+        2
+      ],
+      [
+        "\u00a9 Prince Yanel BG",
+        1
+      ],
+      [
+        "\u00a9 angel luis Arquero",
+        1
+      ]
+    ],
+    "mly_pct_250m": 13.5,
+    "either_pct_250m": 35.6,
+    "both_pct_250m": 10.8
+  },
+  {
+    "iso": "GHA",
+    "sample_size": 800,
+    "gsv_pct_250m": 66.5,
+    "gsv_pct_100m": 47.0,
+    "gsv_official_pct_250m": 63.1,
+    "gsv_median_year": 2024,
+    "gsv_latest_year": 2026,
+    "gsv_copyright_top": [
+      [
+        "\u00a9 Google",
+        505
+      ],
+      [
+        "\u00a9 Synergy Empresa Limited",
+        5
+      ],
+      [
+        "\u00a9 Fara-Farai",
+        2
+      ],
+      [
+        "\u00a9 Moses Anaba",
+        2
+      ]
+    ],
+    "mly_pct_250m": 41.0,
+    "either_pct_250m": 71.0,
+    "both_pct_250m": 36.5
+  }
+]
